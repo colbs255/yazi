@@ -1,10 +1,11 @@
 use yazi_shared::{event::Cmd, render};
 
-use crate::manager::Tabs;
+use crate::{manager::Tabs, tab::Tab};
 
 pub struct Opt {
 	step:     isize,
 	relative: bool,
+	create: bool,
 }
 
 impl From<Cmd> for Opt {
@@ -12,6 +13,7 @@ impl From<Cmd> for Opt {
 		Self {
 			step:     c.take_first().and_then(|s| s.parse().ok()).unwrap_or(0),
 			relative: c.named.contains_key("relative"),
+			create:   c.named.contains_key("create"),
 		}
 	}
 }
@@ -25,11 +27,22 @@ impl Tabs {
 			opt.step as usize
 		};
 
-		if idx == self.cursor || idx >= self.items.len() {
+		if idx == self.cursor {
 			return;
 		}
 
+        while idx >= self.items.len() {
+            let mut tab = Tab::default();
+			tab.conf = self.active().conf.clone();
+			tab.apply_files_attrs();
+			tab.cd(self.active().current.cwd.clone());
+
+            self.items.insert(self.cursor + 1, tab);
+            self.set_idx(self.cursor + 1);
+        }
+
 		self.set_idx(idx);
+        self.reorder();
 		render!();
 	}
 }
